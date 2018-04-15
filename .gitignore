@@ -93,3 +93,5 @@ target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles\.ls
 target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles\.lst
 
 target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/inputFiles\.lst
+
+\.idea/
