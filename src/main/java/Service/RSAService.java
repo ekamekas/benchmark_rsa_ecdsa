@@ -1,6 +1,9 @@
 package Service;
 
 import Model.RSA.*;
+import Utils.Exception.UserException;
+import Utils.Hash.HashUtil;
+import Utils.Hash.HashUtil.*;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -9,6 +12,8 @@ import java.util.Map;
 import java.util.Random;
 
 public class RSAService {
+
+    private HashUtil hashUtil;      // Util for computing digest
 
     private BigInteger primeP;      // Random big prime number
     private BigInteger primeQ;      // Random big prime number
@@ -46,10 +51,14 @@ public class RSAService {
     }
 
     public BigInteger encrypt(BigInteger message, RSAModel rsaModel){
+        if(message.compareTo(rsaModel.getPublicKey().getModulusN()) > 1)
+            throw new UserException("Message overlapping modulus N");
         return message.modPow(rsaModel.getPublicKey().getCoprimeE(), rsaModel.getPublicKey().getModulusN());
     }
 
     public BigInteger decrypt(BigInteger message, RSAModel rsaModel){
+        if(message.compareTo(rsaModel.getPrivateKey().getModulusN()) > 1)
+            throw new UserException("Message overlapping modulus N");
         return message.modPow(rsaModel.getPrivateKey().getExponentD(), rsaModel.getPrivateKey().getModulusN());
     }
 
