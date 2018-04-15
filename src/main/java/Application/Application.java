@@ -9,7 +9,7 @@ public class Application {
 
     public static void main(String[] args){
 //      Initiating Objects and Variables
-        int KEY_LENGTH = 4096;
+        int KEY_LENGTH = 1024;
         RSAService rsaService = new RSAService(KEY_LENGTH);
         BigInteger message = new BigInteger("21483");
         System.out.println(String.format("-- KeyPair --\n%s", rsaService.generateKeyPair().toString()));
