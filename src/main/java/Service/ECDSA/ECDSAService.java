@@ -130,6 +130,20 @@ public class ECDSAService {
     }
 
     // Utils
+    public BigInteger calculateE(BigInteger primeOrder, BigInteger message){
+
+        int primeOrderBitSize = primeOrder.bitLength();
+        int messageBitSize = message.bitLength();
+
+        BigInteger calculatedOrder = primeOrder;
+        if(primeOrderBitSize < messageBitSize){
+            calculatedOrder.shiftRight(messageBitSize - primeOrderBitSize);
+        }
+
+        return calculatedOrder;
+
+    }
+
     public PointModel scalarMultiplication(BigInteger scalar, PointModel point){
         PointModel result = point;
 
