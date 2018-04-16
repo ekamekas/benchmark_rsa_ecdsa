@@ -1,10 +1,11 @@
 package Application;
 
+import Model.ECDSA.ECDSAModel;
 import Model.RSA.RSAModel;
-import Service.RSAService;
+import Service.ECDSA.ECDSAService;
+import Service.RSA.RSAService;
 
 import java.math.BigInteger;
-import java.security.SecureRandom;
 
 import Utils.Hash.HashUtil;
 
@@ -22,6 +23,7 @@ public class Application {
 //      Initiating Objects and Variables
         int KEY_LENGTH = 1024;
         RSAService rsaService = new RSAService(KEY_LENGTH);
+        ECDSAService ecdsaService = new ECDSAService(ECDSAService.AlgorithmID.SECP_192r1);
         BigInteger message = new BigInteger("21483");
         System.out.println(String.format("Message :%s\n", message));
 
@@ -43,7 +45,14 @@ public class Application {
         Boolean verifyResult = rsaService.verifySignature(message, signature, keyPair);
         // End of Profiling point
 
+        // ECDSA
+        // Key generation
+        // Profiling point
+        ECDSAModel ecdsaKeyPair = ecdsaService.generateKeyPair();
+        // End of profiling point
+
         // Logging
+        System.out.println(String.format("----- RSA -----"));
         System.out.println(String.format("Hashed :%s\n", message));
         System.out.println(String.format("-- KeyPair --\n%s", keyPair.toString()));
         System.out.println(String.format("-- RSA Params --\n%s", rsaService.toString()));
@@ -52,6 +61,12 @@ public class Application {
         System.out.println(String.format("Decrypted : %s", decrypted.toString()));
         System.out.println(String.format("Signature : %s", signature.toString()));
         System.out.println(String.format("Verify Result : %s", verifyResult.toString()));
+
+        System.out.println(String.format("----- ECDSA -----"));
+        System.out.println(String.format("-- KeyPair --\n"));
+        System.out.println(String.format("Private key\n%s", ecdsaKeyPair.getPrivateKey()));
+        System.out.println(String.format("Public key\n%s", ecdsaKeyPair.getPublicKey()));
+        System.out.println(String.format("-- ECDSA Params --\n%s", ecdsaKeyPair.toString()));
         // End of Logging
     }
 
