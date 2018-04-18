@@ -4,6 +4,12 @@ import lombok.Data;
 
 import java.math.BigInteger;
 
+/*
+    Mas Eka Setiawan - <mas.eka@ui.ac.id>
+    Computer Engineering, University of Indonesia
+    Benchmarking RSA and ECDSA Algorithm
+*/
+
 @Data
 public class PointModel {
 

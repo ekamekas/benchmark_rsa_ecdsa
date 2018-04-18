@@ -6,6 +6,12 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+/*
+    Mas Eka Setiawan - <mas.eka@ui.ac.id>
+    Computer Engineering, University of Indonesia
+    Benchmarking RSA and ECDSA Algorithm
+*/
+
 public class HashUtil {
 
     public enum AlgorithmID {

@@ -10,8 +10,13 @@ import java.math.BigInteger;
 import Utils.Hash.HashUtil;
 
 /*
+    Mas Eka Setiawan - <mas.eka@ui.ac.id>
+    Computer Engineering, University of Indonesia
+    Benchmarking RSA and ECDSA Algorithm
+*/
+
+/*
     TODO:
-    > Create ECDSA Service, Model, Utils
     > Create looped test environment to take the data
     > Inject benchmarking code/framework to measure resource allocation (CPU/Memory)
     > Export the data into file or to representation object
