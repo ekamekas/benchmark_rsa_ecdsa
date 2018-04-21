@@ -17,9 +17,8 @@ import java.security.SecureRandom;
 */
 
 /*
-    TODO:
-    // Test signature method
-    // Test verify method
+    FIX:
+    // Curve parameters for SECP_512r1
  */
 public class ECDSAService {
 
