@@ -6,6 +6,7 @@ import Model.ECDSA.SignatureModel;
 import Utils.Exception.UserException;
 import Utils.Hash.HashUtil;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 
@@ -130,8 +131,14 @@ public class ECDSAService {
 
     public ECDSAService(BigInteger primeModulus, BigInteger primeOrder,
                         BigInteger coefficientA, BigInteger coefficientB,
-                        PointModel basePoint, BigInteger seed){
-
+                        PointModel basePoint, BigInteger seed, int keyLength){
+        this.ecdsaModel.setPrimeModulus(primeModulus);
+        this.ecdsaModel.setPrimeOrder(primeOrder);
+        this.ecdsaModel.setCoefficientA(coefficientA);
+        this.ecdsaModel.setCoefficientB(coefficientB);
+        this.ecdsaModel.setBaseGenerator(basePoint);
+        this.ecdsaModel.setSeed(seed);
+        this.ecdsaModel.setKeyLength(keyLength);
     }
 
     // Overloading
@@ -139,9 +146,15 @@ public class ECDSAService {
         this.ecdsaModel = algorithmID.toECDSAModel();
     }
 
+    public ECDSAModel getECDSAModel() {
+         return this.ecdsaModel;
+    }
+
     public ECDSAModel generateKeyPair(){
-        ecdsaModel.setPrivateKey(BigInteger.probablePrime(ecdsaModel.getKeyLength(), new SecureRandom()));
-        ecdsaModel.setPublicKey(pointMultiply(ecdsaModel.getBaseGenerator(), ecdsaModel.getPrimeOrder(), ecdsaModel.getCoefficientA(), ecdsaModel.getPrivateKey()));
+        do {
+            ecdsaModel.setPrivateKey(new BigInteger(ecdsaModel.getKeyLength(), new SecureRandom()));
+        } while(ecdsaModel.getPrivateKey().compareTo(ecdsaModel.getPrimeOrder()) != -1);
+        ecdsaModel.setPublicKey(scalarMultiplication(ecdsaModel.getPrivateKey(), ecdsaModel.getBaseGenerator(), ecdsaModel));
         return this.ecdsaModel;
     }
 
@@ -150,16 +163,19 @@ public class ECDSAService {
         BigInteger k, kInv, r, e, s;
         PointModel kG;
 
+        e = calculateE(ecdsaModel.getPrimeOrder(), hashUtil.digest(message, HashUtil.AlgorithmID.SHA_256));
+//        e = hashUtil.digest(message, HashUtil.AlgorithmID.SHA_1);
+
         do {
             do {
-                k = BigInteger.valueOf(1);
-                kG = pointMultiply(ecdsaModel.getBaseGenerator(), ecdsaModel.getPrimeOrder(), ecdsaModel.getCoefficientA(), k);
+                k = new BigInteger(ecdsaModel.getKeyLength(), new SecureRandom());
+//                kG = pointMultiply(ecdsaModel.getBaseGenerator(), ecdsaModel.getPrimeOrder(), ecdsaModel.getCoefficientA(), k);
+                kG = scalarMultiplication(k, ecdsaModel.getBaseGenerator(), ecdsaModel);
                 r = kG.getX().mod(ecdsaModel.getPrimeOrder());
             } while (r.compareTo(BigInteger.ZERO) == 0);
 
             kInv = k.modInverse(ecdsaModel.getPrimeOrder());
-            e = hashUtil.digest(message, HashUtil.AlgorithmID.SHA_1);
-            s = (kInv.multiply(e.add(ecdsaModel.getPrivateKey().multiply(r)))).mod(ecdsaModel.getPrimeOrder());
+            s = ecdsaModel.getPrivateKey().multiply(r).add(e).multiply(kInv).mod(ecdsaModel.getPrimeOrder());
         } while (s.compareTo(BigInteger.ZERO) == 0);
 
         result.setR(r);
@@ -171,27 +187,23 @@ public class ECDSAService {
         BigInteger r = signature.getR();
         BigInteger s = signature.getS();
 
-        if (r.compareTo(ecdsaModel.getPrimeOrder()) >= 0) {
-            return false;
-        }
-        if (s.compareTo(ecdsaModel.getPrimeOrder()) >= 0) {
-            return false;
-        }
-
-        BigInteger e = hashUtil.digest(message, HashUtil.AlgorithmID.SHA_1);
+        BigInteger e = calculateE(ecdsaModel.getPrimeOrder(), hashUtil.digest(message, HashUtil.AlgorithmID.SHA_256));
+//        BigInteger e = hashUtil.digest(message, HashUtil.AlgorithmID.SHA_1);
         BigInteger w = s.modInverse(ecdsaModel.getPrimeOrder());
 
-        BigInteger u1 = (e.multiply(w)).mod(ecdsaModel.getPrimeOrder());
-        BigInteger u2 = (r.multiply(w)).mod(ecdsaModel.getPrimeOrder());
+        BigInteger u1 = e.multiply(w).mod(ecdsaModel.getPrimeOrder());
+        BigInteger u2 = r.multiply(w).mod(ecdsaModel.getPrimeOrder());
 
         PointModel X = pointAddition(
-                        pointMultiply(ecdsaModel.getBaseGenerator(), ecdsaModel.getPrimeOrder(), ecdsaModel.getCoefficientA(), u1),
-                        pointMultiply(ecdsaModel.getPublicKey(), ecdsaModel.getPrimeOrder(), ecdsaModel.getCoefficientA(), u2),
-                        ecdsaModel.getPrimeOrder());
+                        scalarMultiplication(u1, ecdsaModel.getBaseGenerator(), ecdsaModel),
+                        scalarMultiplication(u2, ecdsaModel.getPublicKey(), ecdsaModel),
+                        ecdsaModel);
 
         BigInteger v = X.getX().mod(ecdsaModel.getPrimeOrder());
 
-        if (v.compareTo(r) == 0) {
+        int a =v.compareTo(r.mod(ecdsaModel.getPrimeOrder()));
+
+        if (v.compareTo(r.mod(ecdsaModel.getPrimeOrder())) == 0) {
             return true;
         }
         return false;
@@ -203,10 +215,8 @@ public class ECDSAService {
         int primeOrderBitSize = primeOrder.bitLength();
         int messageBitSize = message.bitLength();
 
-        BigInteger calculatedOrder = primeOrder;
-        if(primeOrderBitSize < messageBitSize){
-            calculatedOrder.shiftRight(messageBitSize - primeOrderBitSize);
-        }
+        BigInteger calculatedOrder = message;
+        calculatedOrder.shiftRight(messageBitSize - primeOrderBitSize);
 
         return calculatedOrder;
 
@@ -224,87 +234,91 @@ public class ECDSAService {
 
     }
 
-    // Point negation
+    // Is point on curve
     // Credit : name@github.com - <Repo>
-    public PointModel pointNegation(PointModel pointModel) {
-        PointModel result = new PointModel(BigInteger.ZERO, BigInteger.ZERO);
-        result.setX(pointModel.getX());
-        result.setY(pointModel.getY().multiply(BigInteger.valueOf(-1)));
-        return result;
+    public Boolean isOnCurve(PointModel point, ECDSAModel ecdsaModel){
+
+        if(null==point)
+            return false;
+
+        BigInteger result = point.getY().multiply(point.getY())
+                            .subtract(point.getX().multiply(point.getX()).multiply(point.getX()))
+                            .subtract(ecdsaModel.getCoefficientA().multiply(point.getX()))
+                            .subtract(ecdsaModel.getCoefficientB())
+                            .mod(ecdsaModel.getPrimeModulus());
+
+        return result.compareTo(BigInteger.ZERO) == 0;
+
     }
 
     // Point negation
     // Credit : name@github.com - <Repo>
-    public PointModel pointAddition(PointModel pointA, PointModel pointB, BigInteger primeOrder) {
+    public PointModel dotNegation(PointModel point, ECDSAModel ecdsaModel){
+
+        if(null==point)
+            return null;
+
         PointModel result = new PointModel(BigInteger.ZERO, BigInteger.ZERO);
-
-        BigInteger y = (pointB.getY().subtract(pointA.getY()));
-        BigInteger x = (pointB.getX().subtract(pointA.getX()));
-        x = x.modInverse(primeOrder);
-        y = y.multiply(x).mod(primeOrder);
-        x = y.multiply(y);
-
-        result.setX(((x.subtract(pointA.getX())).subtract(pointB.getX())).mod(primeOrder));
-        result.setY((y.multiply(pointA.getY().subtract(x))).subtract(pointB.getY()).mod(primeOrder));
+        result.setX(point.getX());
+        result.setY(point.getY().multiply(BigInteger.valueOf(-1)).mod(ecdsaModel.getPrimeModulus()));
 
         return result;
+
     }
 
-    // Point doubling
+    // Point addition
     // Credit : name@github.com - <Repo>
-    public PointModel pointDoubling(PointModel pointModel, BigInteger n, BigInteger coefficientA) {
+    public PointModel pointAddition(PointModel pointA, PointModel pointB, ECDSAModel ecdsaModel){
+
         PointModel result = new PointModel(BigInteger.ZERO, BigInteger.ZERO);
 
-        BigInteger i = pointModel.getX().multiply(pointModel.getX()).multiply(BigInteger.valueOf(3)).add(coefficientA);
-        BigInteger j = (pointModel.getY().multiply(BigInteger.valueOf(2))).modInverse(n);
-        i = (i.multiply(j)).mod(n);
-        j = i.multiply(i);
+        if(null==pointA) return pointB;
+        if(null==pointB) return pointA;
+        if(pointA.getX().compareTo(pointB.getX()) == 0 && pointA.getY().compareTo(pointB.getY()) != 0)
+            throw new UserException("Parameter tidak valid");
 
-        result.setX((j.subtract(pointModel.getX().multiply(BigInteger.valueOf(2)))).mod(n));
-        result.setY((i.multiply(pointModel.getX().subtract(j))).subtract(pointModel.getY()).mod(n));
-
-        return result;
-    }
-
-    // Point doubling
-    // Credit : name@github.com - <Repo>
-    public PointModel pointMultiply(PointModel pointModel, BigInteger n, BigInteger a, BigInteger mult) {
-        PointModel result = new PointModel(BigInteger.ZERO, BigInteger.ZERO);
-        PointModel doubledPoint = pointModel;
-
-        boolean set = false;
-        String binMult = mult.toString(2);
-        int binMultLen = binMult.length();
-
-        for (int c=binMultLen-1; c>= 0; c--) {
-            // System.out.print("|"+c+"|");
-            if (binMult.charAt(c) == '1') {
-                if (set) {
-                    result = pointAddition(result, doubledPoint, n);
-                } else {
-                    result = doubledPoint;
-                    set = true;
-                }
-            }
-            doubledPoint = pointDoubling(doubledPoint, n, a);
+        BigInteger gradientM;
+        if(pointA.getX().compareTo(pointB.getX()) == 0){
+            BigInteger inverseMod = BigInteger.valueOf(2).multiply(pointA.getY()).modInverse(ecdsaModel.getPrimeModulus());
+            gradientM = inverseMod.multiply(BigInteger.valueOf(3).multiply(pointA.getX().multiply(pointA.getX())).add(ecdsaModel.getCoefficientA()));
+        }else {
+            BigInteger inverseMod = pointA.getX().subtract(pointB.getX()).modInverse(ecdsaModel.getPrimeModulus());
+            gradientM = inverseMod.multiply(pointA.getY().subtract(pointB.getY()));
         }
+
+        BigInteger resultX = gradientM.multiply(gradientM).subtract(pointA.getX()).subtract(pointB.getX());
+        BigInteger resultY = gradientM.multiply(resultX.subtract(pointA.getX())).add(pointA.getY());
+
+        result.setX(resultX.mod(ecdsaModel.getPrimeModulus()));
+        result.setY(BigInteger.valueOf(-1).multiply(resultY).mod(ecdsaModel.getPrimeModulus()));
+
         return result;
+
     }
 
-    // Point multiplication
-    public PointModel scalarMultiplication(BigInteger scalar, PointModel point){
-        // TODO:
-        // Using doubleAndAdd algorithm
-        PointModel result = new PointModel(BigInteger.ZERO, BigInteger.ZERO);
-//        while(scalar.bitLength() != 0){
-//            if(scalar.and(BigInteger.ONE).equals(BigInteger.ONE)) /* Add */;
-//            // Multiply
-//        }
+    // Point multiplier
+    // Credit : name@github.com - <Repo>
+    public PointModel scalarMultiplication(BigInteger scalar, PointModel point, ECDSAModel ecdsaModel){
 
-        result.setX(result.getX().multiply(scalar));
-        result.setY(result.getY().multiply(scalar));
+        if(scalar.mod(ecdsaModel.getPrimeOrder()).equals(BigInteger.ZERO) || null==point)
+            throw new UserException("Parameter tidak valid");
+
+        if(scalar.compareTo(BigInteger.ZERO) == -1)
+            return scalarMultiplication(scalar.multiply(BigInteger.valueOf(-1)),
+                                        dotNegation(point, ecdsaModel), ecdsaModel);
+
+        PointModel result = null;
+        PointModel addEnd = point;
+
+        while(scalar.compareTo(BigInteger.ZERO) == 1){
+            if(scalar.and(BigInteger.ONE).equals(BigInteger.ONE))
+                result = pointAddition(result, addEnd, ecdsaModel);
+            addEnd = pointAddition(addEnd, addEnd, ecdsaModel);
+            scalar = scalar.shiftRight(1);
+        }
 
         return result;
+
     }
 
 }
