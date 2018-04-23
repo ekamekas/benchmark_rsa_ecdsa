@@ -22,14 +22,14 @@ import Utils.Hash.HashUtil;
     > Create looped test environment to take the data
     > Inject benchmarking code/framework to measure resource allocation (CPU/Memory)
     > Export the data into file or to representation object
- */
+*/
 public class Application {
 
     public static void main(String[] args){
         HashUtil hashUtil = new HashUtil();
         int KEY_LENGTH = 1024;
         RSAService rsaService = new RSAService(KEY_LENGTH);
-        ECDSAService ecdsaService = new ECDSAService(ECDSAService.AlgorithmID.SECP_384r1);
+        ECDSAService ecdsaService = new ECDSAService(ECDSAService.AlgorithmID.SECP_521r1);
         BigInteger message = new BigInteger("21483");
         System.out.println(String.format("Message :%s\n", message));
 
@@ -71,7 +71,6 @@ public class Application {
 
         // Logging
         System.out.println(String.format("----- RSA -----"));
-        System.out.println(String.format("Hashed :%s\n", message));
         System.out.println(String.format("-- KeyPair --\n%s", keyPair.toString()));
         System.out.println(String.format("-- RSA Params --\n%s", rsaService.toString()));
         System.out.println(String.format("Message : %s", message.toString()));
@@ -80,8 +79,8 @@ public class Application {
         System.out.println(String.format("Signature : %s", signature.toString()));
         System.out.println(String.format("Verify Result : %s", verifyResult.toString()));
 
-        System.out.println(String.format("----- ECDSA -----"));
-        System.out.println(String.format("-- KeyPair --\n"));
+        System.out.println(String.format("\n----- ECDSA -----"));
+        System.out.println(String.format("-- KeyPair --"));
         System.out.println(String.format("Private key\n%s", ecdsaKeyPair.getPrivateKey()));
         System.out.println(String.format("Public key\n%s", ecdsaKeyPair.getPublicKey()));
         System.out.println(String.format("-- ECDSA Params --\n%s", ecdsaKeyPair.toString()));

@@ -15,11 +15,6 @@ import java.security.SecureRandom;
     Computer Engineering, University of Indonesia
     Benchmarking RSA and ECDSA Algorithm
 */
-
-/*
-    FIX:
-    // Curve parameters for SECP_512r1
- */
 public class ECDSAService {
 
     public enum AlgorithmID{
@@ -171,12 +166,10 @@ public class ECDSAService {
         PointModel kG;
 
         e = calculateE(ecdsaModel.getPrimeOrder(), hashUtil.digest(message, HashUtil.AlgorithmID.SHA_256));
-//        e = hashUtil.digest(message, HashUtil.AlgorithmID.SHA_1);
 
         do {
             do {
                 k = new BigInteger(ecdsaModel.getKeyLength(), new SecureRandom());
-//                kG = pointMultiply(ecdsaModel.getBaseGenerator(), ecdsaModel.getPrimeOrder(), ecdsaModel.getCoefficientA(), k);
                 kG = scalarMultiplication(k, ecdsaModel.getBaseGenerator(), ecdsaModel);
                 r = kG.getX().mod(ecdsaModel.getPrimeOrder());
             } while (r.compareTo(BigInteger.ZERO) == 0);
@@ -195,7 +188,6 @@ public class ECDSAService {
         BigInteger s = signature.getS();
 
         BigInteger e = calculateE(ecdsaModel.getPrimeOrder(), hashUtil.digest(message, HashUtil.AlgorithmID.SHA_256));
-//        BigInteger e = hashUtil.digest(message, HashUtil.AlgorithmID.SHA_1);
         BigInteger w = s.modInverse(ecdsaModel.getPrimeOrder());
 
         BigInteger u1 = e.multiply(w).mod(ecdsaModel.getPrimeOrder());
@@ -207,8 +199,6 @@ public class ECDSAService {
                         ecdsaModel);
 
         BigInteger v = X.getX().mod(ecdsaModel.getPrimeOrder());
-
-        int a =v.compareTo(r.mod(ecdsaModel.getPrimeOrder()));
 
         if (v.compareTo(r.mod(ecdsaModel.getPrimeOrder())) == 0) {
             return true;
