@@ -1,4 +1,4 @@
-package Service;
+package Service.RSA;
 
 import Model.RSA.*;
 import Utils.Exception.UserException;
