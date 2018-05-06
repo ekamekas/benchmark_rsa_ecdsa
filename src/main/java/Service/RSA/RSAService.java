@@ -128,6 +128,10 @@ public class RSAService {
         return converted;
     }
 
+    public int getKeylength(){
+        return this.KEY_LENGTH;
+    }
+
     @Override
     public String toString(){
         return String.format("P : %s\nQ : %s\nKey Size : %d\nPhi : %s",
